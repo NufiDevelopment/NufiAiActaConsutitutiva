@@ -1,0 +1,12 @@
+{
+  "disabled": false,
+  "bindings": [
+      {
+          "type": "queueTrigger",
+          "direction": "in",
+          "name": "myQueueItem",
+          "queueName": "%QUEUE_NAME%",
+          "connection": "QUEUE_CONN"          
+      }
+  ]
+}
