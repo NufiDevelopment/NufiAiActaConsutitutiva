@@ -7,6 +7,10 @@ actaConstitutivaData =  require("../data/actaConstitutivaData"),
 const utils = require("../utils/utilities");
 openAiData = require("../data/openAiData");
 
+let appInsights = require('applicationinsights');
+
+appInsights.setup(process.env.APPLICATIONINSIGHTS_CONNECTION_STRING).start();
+
 const AZURE_CONTAINER = process.env.STORAGE_CONTAINER;
 
 const gptDatosGenerales = process.env.CHAT_MSG_DATOS_GENERALES;
@@ -110,9 +114,13 @@ async function GuardaActaConstitutiva(req){
     }
     catch(err){        
 
-        console.error("ERROR GRAL");
+        // console.error("ERROR GRAL");
 
-        contextRes.body = GetResponseError(err, uuid);
+        const errorBody = GetResponseError(err, uuid);
+
+        console.error(JSON.stringify(err), uuid);
+
+        contextRes.body = errorBody;
 
         if(idActa !== null){// only if initial insert worked
             tokens = await actaConstitutivaData.GetOpenAiTokens(uuid);
@@ -221,8 +229,10 @@ async function ProcessWebhhoksAsync(uuid, urlWebhook){
 
         }
         catch(err){
-            console.error("ERROR GRAL");
+            
             response = GetResponseError(err, uuid);
+            
+            console.error(JSON.stringify(err), uuid);
 
             tokens = await actaConstitutivaData.GetOpenAiTokens(uuid);
             await actaConstitutivaData.saveResponseActaConstitutiva(uuid, JSON.stringify(response), "error", JSON.stringify(err), JSON.stringify(errorWebhook));
@@ -232,7 +242,8 @@ async function ProcessWebhhoksAsync(uuid, urlWebhook){
         return response;
     }
     catch(errorGral){
-        console.error("ERROR Durante guardado response o tokens");
+
+        console.error("ERROR Durante guardado response o tokens", uuid);
     }
 }
 
