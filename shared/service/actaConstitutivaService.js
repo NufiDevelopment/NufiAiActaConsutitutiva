@@ -36,7 +36,7 @@ async function GuardaActaConstitutiva(req){
 
     let response = { status: "error", message: "", data: null, code: 0 };
     let contextRes = {status: 200, headers: {"content-type": "application/json"},body: response};
-    let error="", estatus="", fileBase64 = "", tokens = {};
+    let error="", estatus="", fileBase64 = "", tokens = {}, idActa = null;
 
     try{
         console.info("INIT PROCESS");
@@ -46,7 +46,7 @@ async function GuardaActaConstitutiva(req){
         const isWebhook = (urlWebhook) ? true: false;        
         const request_time = moment();
 
-        await actaConstitutivaData.saveRequestActaConstitutiva(
+        let idActa = await actaConstitutivaData.saveRequestActaConstitutiva(
             JSON.stringify(data), 
             uuid, 
             urlWebhook, 
@@ -104,7 +104,6 @@ async function GuardaActaConstitutiva(req){
 
             await actaConstitutivaData.saveResponseActaConstitutiva(uuid, JSON.stringify(response), "unauthorized");
             // await actaConstitutivaData.UpdateTokensRecord(uuid, "unauthorized", 0, 0, 0, moment());
-
         }
 
         contextRes.body = response;
@@ -115,11 +114,11 @@ async function GuardaActaConstitutiva(req){
 
         contextRes.body = GetResponseError(err, uuid);
 
-        tokens = await actaConstitutivaData.GetOpenAiTokens(uuid);
-
-
-        await actaConstitutivaData.saveResponseActaConstitutiva(uuid, JSON.stringify(contextRes.body), "error", JSON.stringify(err));
-        await actaConstitutivaData.UpdateTokensRecord(uuid, "error", tokens.promptTokens, tokens.completionTokens, tokens.totalTokens, moment());
+        if(idActa !== null){// only if initial insert worked
+            tokens = await actaConstitutivaData.GetOpenAiTokens(uuid);
+            await actaConstitutivaData.saveResponseActaConstitutiva(uuid, JSON.stringify(contextRes.body), "error", JSON.stringify(err));
+            await actaConstitutivaData.UpdateTokensRecord(uuid, "error", tokens.promptTokens, tokens.completionTokens, tokens.totalTokens, moment());
+        }
 
         contextRes.status = 500;
 

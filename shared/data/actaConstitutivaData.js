@@ -11,8 +11,17 @@ module.exports = {
             type: type,
             status: `Created`
         }, DB.tabla.actaConstitutiva)    
-        .then(id => { return ( id);})
-        .catch(err => { return console.log(err, uuid)});
+        .then(id => { 
+            return ( id);
+        })
+        .catch(err => {
+            const error = {func: "saveRequestActaConstitutiva", uuid: uuid, err: err};            
+            const fullError = {message:"Error durante procesamiento", stack:error};
+
+            console.log(err, uuid);
+
+            throw fullError;
+        });
     },
     saveResponseActaConstitutiva: async function(uuid, response, status, error = null, errorWebhook = null){
 
@@ -129,8 +138,17 @@ module.exports = {
             status: status,
             requestDate: requestDate.format("YYYY-MM-DD HH:mm:ss")            
         }, DB.tabla.tokens)
-        .then(id => { return ( id);})
-        .catch(err => { return console.log(err, uuid)});
+        .then(id => { 
+            return ( id);
+        })
+        .catch(err => {
+            const error = {func: "CreateTokensRecord", uuid: uuid, err: err};            
+            const fullError = {message:"Error durante procesamiento", stack:error};
+
+            console.log(err, uuid);
+
+            throw fullError;
+        });
     },
     UpdateTokensRecord: async function(docUuid, status, promptTokens, completionTokens, totalTokens, responseDate){
         let curtime = moment();
