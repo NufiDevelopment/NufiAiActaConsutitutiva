@@ -240,6 +240,8 @@ async function ProcessWebhhoksAsync(uuid, urlWebhook){
 async function ProcessActaConstitutiva(uuid){
     try{
 
+
+        let totalTokensCompletion = 0, totalTokensPrompt = 0, totalTokens = 0;
         let response = { status: "success", message: "", data: {uuid:uuid}, code: 200 };
 
         const fileName = `${uuid}.pdf`;
@@ -252,12 +254,43 @@ async function ProcessActaConstitutiva(uuid){
 
         await actaConstitutivaData.UpdateOcr(uuid, (pagesData.join("\n")));
 
-        const jsonAnalisis = await GetAnalisInfo(uuid, pagesData.join("\n"));        
+        const allInfoData = await GetDocumentInfo(uuid, pagesData.join("\n"));
+
+
+        allInfoData.forEach(async (item, index)=>{
+
+            totalTokensCompletion += item.totalTokensCompletion;
+            totalTokensPrompt += item.totalTokensPrompt;
+            totalTokens += item.totalTokens;
+            
+            delete item.totalTokensCompletion;
+            delete item.totalTokensPrompt;
+            delete item.totalTokens;
+
+            response.data[item.type] =  item;
+
+        });
+
+        response.data["uuid"] = uuid;        
         
-        response.data =  jsonAnalisis;
+        // const jsonAnalisis = await GetAnalisInfo(uuid, pagesData.join("\n"));
+        // const jsonObjSocial = await GetObjetoSocial(uuid, pagesData.join("\n"));
+        // const jsonAnalisisObjSocial = await GetObjetoSocialAnalisis(uuid, pagesData.join("\n"));
+        // const jsonOrganosInternos = await GetOrganosInternos(uuid, pagesData.join("\n"));
+        // const jsonConsejo = await GetFacultadesConsejo(uuid, pagesData.join("\n"));
+        // const jsonRepresentante = await GetFacultadesRepresentante(uuid, pagesData.join("\n"));
+
+        
+        // response.data["DatosGenerales"] =  jsonAnalisis;
+        // response.data["ObjetoSocial"] =  jsonObjSocial;
+        // response.data["AnalisisObjetoSocial"] =  jsonAnalisisObjSocial;
+        // response.data["OrganosInternos"] =  jsonOrganosInternos;
+        // response.data["FacultadesConsejoAdministracion"] =  jsonConsejo;
+        // response.data["FacultadesRepresentante"] =  jsonRepresentante;
+
         response.data["uuid"] = uuid;        
 
-        await actaConstitutivaData.UpdateTokensDoc(uuid, `GPT_QUERIES_COMPLETED`, jsonAnalisis.totalTokensCompletion, jsonAnalisis.totalTokensPrompt, jsonAnalisis.totalTokens);
+        await actaConstitutivaData.UpdateTokensDoc(uuid, `GPT_QUERIES_COMPLETED`, totalTokensCompletion, totalTokensPrompt, totalTokens);
 
         console.info("END GetDocumentInfo");
 
@@ -321,9 +354,11 @@ async function GetAnalisInfo(uuid, ocrDataText){
 
         jsonAnalisis = await openAiData.Chat(uuid, prompt, "Analisis_Datos_Generales");
 
+        jsonAnalisis["type"] = "AnalisisGeneral";
+
         console.info("GPT ANALYSIS RESPONSE");
 
-        await actaConstitutivaData.UpdateEstatus(uuid, "GPT_Analisis");
+        await actaConstitutivaData.UpdateEstatus(uuid, "AnalisisGeneral");
         
     }
     catch(error){
@@ -337,7 +372,152 @@ async function GetAnalisInfo(uuid, ocrDataText){
 
 }
 
-async function GetDocumentInfo(uuid, gralInfoStr, movsArray){
+async function GetObjetoSocial(uuid, ocrDataText){
+
+    let jsonAnalisis = {};
+
+    try{
+        console.info("GPT ANALYSIS CALL");
+
+        const prompt = `${gptObjSocial} ${ocrDataText}`;
+
+        jsonAnalisis = await openAiData.Chat(uuid, prompt, "Analisis_Objeto_Social");
+
+        jsonAnalisis["type"] = "ObjetoSocial";
+
+        console.info("GPT ANALYSIS RESPONSE");
+
+        await actaConstitutivaData.UpdateEstatus(uuid, "ObjetoSocial");
+        
+    }
+    catch(error){
+        console.error("ERROR GetObjetoSocial");
+        console.error(JSON.stringify(error));
+
+        throw error;
+    }
+
+    return jsonAnalisis;
+
+}
+
+async function GetObjetoSocialAnalisis(uuid, ocrDataText){
+
+    let jsonAnalisis = {};
+
+    try{
+        console.info("GPT ANALYSIS CALL");
+
+        const prompt = `${gptObjAnalisis} ${ocrDataText}`;
+
+        jsonAnalisis = await openAiData.Chat(uuid, prompt, "Analisis_Objeto_Social_Analsis");
+
+        jsonAnalisis["type"] = "ObjetoSocialAnalisis";
+
+        console.info("GPT ANALYSIS RESPONSE");
+
+        await actaConstitutivaData.UpdateEstatus(uuid, "ObjetoSocialAnalisis");
+        
+    }
+    catch(error){
+        console.error("ERROR GetObjetoSocialAnalisis");
+        console.error(JSON.stringify(error));
+
+        throw error;
+    }
+
+    return jsonAnalisis;
+
+}
+
+async function GetOrganosInternos(uuid, ocrDataText){
+
+    let jsonAnalisis = {};
+
+    try{
+        console.info("GPT ANALYSIS CALL");
+
+        const prompt = `${gptOrgInternosAnalisis} ${ocrDataText}`;
+
+        jsonAnalisis = await openAiData.Chat(uuid, prompt, "Analisis_Organos_Internos");
+
+        jsonAnalisis["type"] = "OgranosInternos";
+
+        console.info("GPT ANALYSIS RESPONSE");
+
+        await actaConstitutivaData.UpdateEstatus(uuid, "OgranosInternos");
+        
+    }
+    catch(error){
+        console.error("ERROR GET ANALYSIS INFO");
+        console.error(JSON.stringify(error));
+
+        throw error;
+    }
+
+    return jsonAnalisis;
+
+}
+
+async function GetFacultadesConsejo(uuid, ocrDataText){
+
+    let jsonAnalisis = {};
+
+    try{
+        console.info("GPT ANALYSIS CALL");
+
+        const prompt = `${gptFacultadesConsejo} ${ocrDataText}`;
+
+        jsonAnalisis = await openAiData.Chat(uuid, prompt, "Analisis_FacultadesConsejo");
+
+        jsonAnalisis["type"] = "FacultadesConsejo";
+
+        console.info("GPT ANALYSIS RESPONSE");
+
+        await actaConstitutivaData.UpdateEstatus(uuid, "FacultadesConsejo");
+        
+    }
+    catch(error){
+        console.error("ERROR GET ANALYSIS INFO");
+        console.error(JSON.stringify(error));
+
+        throw error;
+    }
+
+    return jsonAnalisis;
+
+}
+
+async function GetFacultadesRepresentante(uuid, ocrDataText){
+
+    let jsonAnalisis = {};
+
+    try{
+        console.info("GPT ANALYSIS CALL");
+
+        const prompt = `${gptFacultadesRepresentante} ${ocrDataText}`;
+
+        jsonAnalisis = await openAiData.Chat(uuid, prompt, "Analisis_FacultadesRepresentante");
+
+        jsonAnalisis["type"] = "FacultadesRepresentante";
+
+        console.info("GPT ANALYSIS RESPONSE");
+
+        await actaConstitutivaData.UpdateEstatus(uuid, "FacultadesRepresentante");
+        
+    }
+    catch(error){
+        console.error("ERROR GET ANALYSIS INFO");
+        console.error(JSON.stringify(error));
+
+        throw error;
+    }
+
+    return jsonAnalisis;
+
+}
+
+async function GetDocumentInfo(uuid, gralInfoStr){
 
     let allDocumentData = [];
 
@@ -345,8 +525,12 @@ async function GetDocumentInfo(uuid, gralInfoStr, movsArray){
 
         let allDocumentInfo = [];
 
-        allDocumentInfo.push(GetGeneralInfo(uuid, gralInfoStr));
-        allDocumentInfo.push(awaitAllMovements(uuid, movsArray));
+        allDocumentInfo.push(GetAnalisInfo(uuid, gralInfoStr));
+        allDocumentInfo.push(GetObjetoSocial(uuid, gralInfoStr));
+        allDocumentInfo.push(GetObjetoSocialAnalisis(uuid, gralInfoStr));
+        allDocumentInfo.push(GetOrganosInternos(uuid, gralInfoStr));
+        allDocumentInfo.push(GetFacultadesConsejo(uuid, gralInfoStr));
+        allDocumentInfo.push(GetFacultadesRepresentante(uuid, gralInfoStr));
 
         allDocumentData = Promise.all(allDocumentInfo);
 
