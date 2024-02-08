@@ -53,7 +53,7 @@ async function Chat(uuidDoc, prompt, tipoQuery){
     }
     catch(error){
 
-        const fullError = {message: "Error al analizar documento", stack:error, uuidQuery: uuidQuery};
+        const fullError = {message: "Error al analizar documento", func: "Chat", stack:error, uuidQuery: uuidQuery};
 
         await saveResponseGPT(
                 uuidQuery, 
@@ -66,7 +66,7 @@ async function Chat(uuidDoc, prompt, tipoQuery){
                 "error", 
                 JSON.stringify(error)) ;
         
-        console.error(error);
+        console.error(fullError, uuidDoc);
         throw fullError;
     }
 
@@ -88,7 +88,13 @@ async function saveRequestGPT (uuid, Doc_UUID, prompt, typeQuery, url = ""){
         status: `Created`
     }, DB.tabla.actaConstitutivaQueries)
     .then(id => { return ( id);})
-    .catch(err => { return console.log(err, uuid)});
+    .catch(err => { 
+
+        const fullError = {func: "saveRequestGPT", stack:err, uuid: Doc_UUID};
+        console.error(fullError, Doc_UUID);
+
+        return console.log(err, uuid)
+    });
 }
 
 async function saveResponseGPT (uuid, response, messageResponse, jsonResponse, promptTokens, completionTokens, totalTokens, status, error){
@@ -106,5 +112,13 @@ async function saveResponseGPT (uuid, response, messageResponse, jsonResponse, p
         error: error,
         status: status
     }, DB.tabla.actaConstitutivaQueries, `uuid='${uuid}'`)    
-    .catch(err => { return console.log(err, uuid)});
+    .catch(err => {
+
+        const fullError = {func: "saveResponseGPT", stack:err, QueryUuid: uuid};
+        console.error(fullError, uuid);
+
+        console.error(err, uuid);
+        return console.log(err, uuid)
+    
+    });
 }
