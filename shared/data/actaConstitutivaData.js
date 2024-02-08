@@ -18,7 +18,8 @@ module.exports = {
             const error = {func: "saveRequestActaConstitutiva", uuid: uuid, err: err};            
             const fullError = {message:"Error durante procesamiento", stack:error};
 
-            console.log(err, uuid);
+            console.error(error, uuid);
+            console.log(error, uuid);
 
             throw fullError;
         });
@@ -35,7 +36,13 @@ module.exports = {
             error: error,
             errorWebhook : errorWebhook
         }, DB.tabla.actaConstitutiva, `uuid='${uuid}'`)        
-        .catch(err => { return console.log(err, uuid)});
+        .catch(err => { 
+
+            const error = {func: "saveResponseActaConstitutiva", uuid: uuid, err: err};            
+            console.error(error, uuid);
+
+            return console.log(err, uuid)
+        });
     },
     UpdateEstatus: async function(uuid, status){
         let response_time = moment();        
@@ -46,7 +53,12 @@ module.exports = {
             modified:response_time.format("YYYY-MM-DD HH:mm:ss"), 
             status: status, 
         }, DB.tabla.actaConstitutiva, `uuid='${uuid}'`)
-        .catch(err => { return console.log(err, uuid)});
+        .catch(err => { 
+            const error = {func: "UpdateEstatus", uuid: uuid, err: err};            
+            console.error(error, uuid);
+
+            return console.log(err, uuid)
+        });
     },
     GetRecord: async function(uuid){
 
@@ -62,6 +74,10 @@ module.exports = {
             return record[0];
         }
         catch(err){
+
+            const error = {func: "GetRecord", uuid: uuid, err: err};            
+            console.error(error, uuid);
+
             throw err;
         }
     },
@@ -82,6 +98,10 @@ module.exports = {
             return record[0];
         }
         catch(err){
+
+            const error = {func: "GetOpenAiTokens", uuid: uuid, err: err};            
+            console.error(error, uuid);
+
             throw err;
         }
     },
@@ -99,6 +119,10 @@ module.exports = {
                 return records;
             }
             catch(err){
+                        
+                const error = {func: "GetWebhookProcesses", err: err};
+                console.error(error);
+
                 throw err;
             }
     },
@@ -112,7 +136,13 @@ module.exports = {
             ocrText: ocrText, 
             status: "OCR", 
         }, DB.tabla.actaConstitutiva, `uuid='${uuid}'`)
-        .catch(err => { return console.log(err, uuid)});
+        .catch(err => { 
+        
+            const error = {func: "UpdateOcr", uuid: uuid, err: err};            
+            console.error(error, uuid);
+
+            return console.log(err, uuid)
+        });
     },
     UpdateTokensDoc: async function(uuid, status, tokensCompletion, tokensPrompt, tokensTotal){
         let response_time = moment();        
@@ -126,7 +156,13 @@ module.exports = {
             totalTokens: tokensTotal, 
             status: status, 
         }, DB.tabla.actaConstitutiva, `uuid='${uuid}'`)
-        .catch(err => { return console.log(err, uuid)});
+        .catch(err => { 
+
+            const error = {func: "UpdateTokensDoc", uuid: uuid, err: err};            
+            console.error(error, uuid);
+
+            return console.log(err, uuid)
+        });
     },
     CreateTokensRecord: async function(uuid, typeDoc, docUuid, apikey, status,  requestDate){        
             
@@ -145,7 +181,7 @@ module.exports = {
             const error = {func: "CreateTokensRecord", uuid: uuid, err: err};            
             const fullError = {message:"Error durante procesamiento", stack:error};
 
-            console.log(err, uuid);
+            console.error(error, uuid);
 
             throw fullError;
         });
@@ -161,8 +197,13 @@ module.exports = {
             completionTokens: completionTokens, 
             totalTokens: totalTokens, 
             status: status, 
-            responseDate: responseDate.format("YYYY-MM-DD HH:mm:ss")            
+            responseDate: responseDate.format("YYYY-MM-DD HH:mm:ss")
         }, DB.tabla.tokens, `doc_Uuid='${docUuid}'`)
-        .catch(err => { return console.log(err, docUuid)});
+        .catch(err => { 
+            const error = {func: "UpdateTokensRecord", uuid: docUuid, err: err};            
+            console.error(error, uuid);
+
+            return console.log(err, docUuid)
+        });
     }
 }
