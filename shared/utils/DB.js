@@ -4,7 +4,7 @@ const sql = require("mssql"),
         password: process.env.DB_PASS,
         server: process.env.DB_HOST,
         database: process.env.DB_NAME,        
-        options: { trustServerCertificate: true.valueOf,
+        options: { trustServerCertificate: true},
         connectionTimeout: 30000
     }
   };
