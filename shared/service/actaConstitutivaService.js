@@ -536,11 +536,11 @@ async function GetDocumentInfo(uuid, gralInfoStr){
         let allDocumentInfo = [];
 
         allDocumentInfo.push(GetAnalisInfo(uuid, gralInfoStr));
-        allDocumentInfo.push(GetObjetoSocial(uuid, gralInfoStr));
-        allDocumentInfo.push(GetObjetoSocialAnalisis(uuid, gralInfoStr));
-        allDocumentInfo.push(GetOrganosInternos(uuid, gralInfoStr));
-        allDocumentInfo.push(GetFacultadesConsejo(uuid, gralInfoStr));
-        allDocumentInfo.push(GetFacultadesRepresentante(uuid, gralInfoStr));
+        // allDocumentInfo.push(GetObjetoSocial(uuid, gralInfoStr));
+        // allDocumentInfo.push(GetObjetoSocialAnalisis(uuid, gralInfoStr));
+        // allDocumentInfo.push(GetOrganosInternos(uuid, gralInfoStr));
+        // allDocumentInfo.push(GetFacultadesConsejo(uuid, gralInfoStr));
+        // allDocumentInfo.push(GetFacultadesRepresentante(uuid, gralInfoStr));
 
         allDocumentData = Promise.all(allDocumentInfo);
 
