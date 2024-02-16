@@ -19,7 +19,7 @@ module.exports = {
             const fullError = {message:"Error durante procesamiento", stack:error};
 
             console.error(error, uuid);
-            console.log(error, uuid);
+            // console.log(error, uuid);
 
             throw fullError;
         });
@@ -28,14 +28,14 @@ module.exports = {
 
         let response_time = moment();        
     
-        return DB.update({
+        return DB.updateSec({
             modified:response_time.format("YYYY-MM-DD HH:mm:ss"),
             response: JSON.stringify(response),
             responseDate: response_time.format("YYYY-MM-DD HH:mm:ss"),
             status: status,
             error: error,
             errorWebhook : errorWebhook
-        }, DB.tabla.actaConstitutiva, `uuid='${uuid}'`)        
+        }, DB.tabla.actaConstitutiva, `uuid='${uuid}'`, {uuid:uuid})        
         .catch(err => { 
 
             const error = {func: "saveResponseActaConstitutiva", uuid: uuid, err: err};            
