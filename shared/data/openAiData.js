@@ -78,7 +78,7 @@ async function saveRequestGPT (uuid, Doc_UUID, prompt, typeQuery, url = ""){
 
     let reqTime = moment();       
 
-    return DB.insert({
+    return DB.insertSec({
         uuid: uuid,
         Doc_UUID: Doc_UUID,
         tipoQuery: typeQuery,
@@ -101,7 +101,7 @@ async function saveResponseGPT (uuid, response, messageResponse, jsonResponse, p
 
     let resTime = moment(); 
 
-    return DB.update({
+    return DB.updateSec({
         response: response,
         responseDate: resTime.format("YYYY-MM-DD HH:mm:ss"),
         messageResponse: messageResponse,
@@ -111,7 +111,7 @@ async function saveResponseGPT (uuid, response, messageResponse, jsonResponse, p
         totalTokens: totalTokens,
         error: error,
         status: status
-    }, DB.tabla.actaConstitutivaQueries, `uuid='${uuid}'`)    
+    }, DB.tabla.actaConstitutivaQueries, `uuid=@uuid`, {uuid:uuid})
     .catch(err => {
 
         const fullError = {func: "saveResponseGPT", stack:err, QueryUuid: uuid};
