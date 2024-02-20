@@ -1,12 +1,13 @@
 const sql = require("mssql"),
+    dbTimeout = parseInt(process.env.DB_TIMEOUT);
     config = {
         user: process.env.DB_USER,
         password: process.env.DB_PASS,
         server: process.env.DB_HOST,
         database: process.env.DB_NAME,
         options: { trustServerCertificate: true},
-        connectionTimeout: 30000,
-        requestTimeout:30000
+        connectionTimeout: 16000,
+        requestTimeout:dbTimeout
   };
 
 module.exports = {

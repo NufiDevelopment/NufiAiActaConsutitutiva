@@ -47,7 +47,8 @@ async function GuardaActaConstitutiva(req){
       
   
         const urlWebhook = data.webhook;
-        const isWebhook = (urlWebhook) ? true: false;        
+        const isWebhook = (urlWebhook) ? true: false;
+        const step = (typeof data.paso === "undefined" || data.paso === null || data.paso === "") ? null: data.paso;
         const request_time = moment();
 
         let idActa = await actaConstitutivaData.saveRequestActaConstitutiva(
@@ -55,6 +56,7 @@ async function GuardaActaConstitutiva(req){
             uuid, 
             urlWebhook, 
             (isWebhook) ? "webhook" : "sincrono", 
+            step,
             request_time
         );        
 
@@ -72,8 +74,7 @@ async function GuardaActaConstitutiva(req){
 
                 fileBase64 = GetBase64(data.fileB64);
 
-
-                response = await InitProcessing(uuid, fileBase64, isWebhook);
+                response = await InitProcessing(uuid, fileBase64, isWebhook, step);
                 await actaConstitutivaData.saveResponseActaConstitutiva(uuid, JSON.stringify(response), "Finished");
 
                 tokens = await actaConstitutivaData.GetOpenAiTokens(uuid);
@@ -85,7 +86,7 @@ async function GuardaActaConstitutiva(req){
 
                 fileBase64 = GetBase64(data.fileB64);
                 
-                response = await InitProcessing(uuid, fileBase64, isWebhook);
+                response = await InitProcessing(uuid, fileBase64, isWebhook, step);
             }
             else{
 
@@ -140,7 +141,7 @@ async function ProcessWebhookQueue(item){
         const uuid = item.uuid;
         const actaConstitutiva = await actaConstitutivaData.GetRecord(uuid);
 
-        const resultWH = await ProcessWebhhoksAsync(uuid, actaConstitutiva.urlWebhook, actaConstitutiva.status);
+        const resultWH = await ProcessWebhhoksAsync(uuid, actaConstitutiva.urlWebhook, actaConstitutiva.step);
 
         console.info("Termina ejecución Queue "+ uuid);
 
@@ -150,7 +151,7 @@ async function ProcessWebhookQueue(item){
     }
 }
 
-async function InitProcessing(uuid, fileBase64, isWebhook){
+async function InitProcessing(uuid, fileBase64, isWebhook, step){
     try{        
         let response = {}, estatus = `Created`;
 
@@ -173,7 +174,7 @@ async function InitProcessing(uuid, fileBase64, isWebhook){
         else{
 
             await actaConstitutivaData.UpdateEstatus(uuid, "SyncProcess");
-            response = await ProcessSync(uuid, estatus);
+            response = await ProcessSync(uuid, estatus, step);
         }
 
         return response;
@@ -183,11 +184,11 @@ async function InitProcessing(uuid, fileBase64, isWebhook){
     }
 }
 
-async function ProcessSync(uuid){
+async function ProcessSync(uuid, step){
 
     try{
 
-        const response = await ProcessActaConstitutiva(uuid);
+        const response = await ProcessActaConstitutiva(uuid, step);
         return response;
     }
     catch(err){
@@ -195,7 +196,7 @@ async function ProcessSync(uuid){
     }
 }
 
-async function ProcessWebhhoksAsync(uuid, urlWebhook){
+async function ProcessWebhhoksAsync(uuid, urlWebhook, step){
 
     let error="", errorWebhook = "", estatus="", tokens = {};
     let response = { status: "error", message: "", data: {uuid: uuid}, code: 0 };
@@ -205,7 +206,7 @@ async function ProcessWebhhoksAsync(uuid, urlWebhook){
         try{
 
             try{
-                response = await ProcessActaConstitutiva(uuid);
+                response = await ProcessActaConstitutiva(uuid, step);
             }
             catch(errorProceso){
                 response = GetResponseError(errorProceso, uuid);
@@ -247,12 +248,13 @@ async function ProcessWebhhoksAsync(uuid, urlWebhook){
     }
 }
 
-async function ProcessActaConstitutiva(uuid){
+async function ProcessActaConstitutiva(uuid, step){
     try{
 
 
         let totalTokensCompletion = 0, totalTokensPrompt = 0, totalTokens = 0;
         let response = { status: "success", message: "", data: {uuid:uuid}, code: 200 };
+        let objSocialData = null;
 
         const fileName = `${uuid}.pdf`;
        
@@ -264,8 +266,10 @@ async function ProcessActaConstitutiva(uuid){
 
         await actaConstitutivaData.UpdateOcr(uuid, (pagesData.join("\n")));
 
-        const allInfoData = await GetDocumentInfo(uuid, pagesData.join("\n"));
+        await actaConstitutivaData.UpdateEstatus(uuid, "GetDocumentInfo");
 
+
+        const allInfoData = await GetDocumentInfo(uuid, pagesData.join("\n"), step);
 
         allInfoData.forEach(async (item, index)=>{
 
@@ -278,27 +282,27 @@ async function ProcessActaConstitutiva(uuid){
             delete item.totalTokens;
 
             response.data[item.type] =  item;
-
         });
 
-        response.data["uuid"] = uuid;        
-        
-        // const jsonAnalisis = await GetAnalisInfo(uuid, pagesData.join("\n"));
-        // const jsonObjSocial = await GetObjetoSocial(uuid, pagesData.join("\n"));
-        // const jsonAnalisisObjSocial = await GetObjetoSocialAnalisis(uuid, pagesData.join("\n"));
-        // const jsonOrganosInternos = await GetOrganosInternos(uuid, pagesData.join("\n"));
-        // const jsonConsejo = await GetFacultadesConsejo(uuid, pagesData.join("\n"));
-        // const jsonRepresentante = await GetFacultadesRepresentante(uuid, pagesData.join("\n"));
 
-        
-        // response.data["DatosGenerales"] =  jsonAnalisis;
-        // response.data["ObjetoSocial"] =  jsonObjSocial;
-        // response.data["AnalisisObjetoSocial"] =  jsonAnalisisObjSocial;
-        // response.data["OrganosInternos"] =  jsonOrganosInternos;
-        // response.data["FacultadesConsejoAdministracion"] =  jsonConsejo;
-        // response.data["FacultadesRepresentante"] =  jsonRepresentante;
+        if(step != null && step > 2){         
+            objSocialData =  await GetDocumentInfoSteps34(uuid, pagesData.join("\n"), step, response.data["ObjetoSocial"]);
 
-        response.data["uuid"] = uuid;        
+            objSocialData.forEach(async (item, index)=>{
+
+                totalTokensCompletion += item.totalTokensCompletion;
+                totalTokensPrompt += item.totalTokensPrompt;
+                totalTokens += item.totalTokens;
+                
+                delete item.totalTokensCompletion;
+                delete item.totalTokensPrompt;
+                delete item.totalTokens;
+    
+                response.data[item.type] =  item;
+            });
+        }
+
+        response.data["uuid"] = uuid;                
 
         await actaConstitutivaData.UpdateTokensDoc(uuid, `GPT_QUERIES_COMPLETED`, totalTokensCompletion, totalTokensPrompt, totalTokens);
 
@@ -358,7 +362,7 @@ async function GetAnalisInfo(uuid, ocrDataText){
     let jsonAnalisis = {};
 
     try{
-        console.info("GPT ANALYSIS CALL");
+        console.info("GPT GetAnalisInfo CALL", uuid);
 
         const prompt = `${gptDatosGenerales} ${ocrDataText}`;
 
@@ -366,7 +370,7 @@ async function GetAnalisInfo(uuid, ocrDataText){
 
         jsonAnalisis["type"] = "AnalisisGeneral";
 
-        console.info("GPT ANALYSIS RESPONSE");
+        console.info("GPT GetAnalisInfo RESPONSE", uuid);
 
         await actaConstitutivaData.UpdateEstatus(uuid, "AnalisisGeneral");
         
@@ -387,7 +391,7 @@ async function GetObjetoSocial(uuid, ocrDataText){
     let jsonAnalisis = {};
 
     try{
-        console.info("GPT ANALYSIS CALL");
+        console.info("GPT GetObjetoSocial CALL", uuid);
 
         const prompt = `${gptObjSocial} ${ocrDataText}`;
 
@@ -395,7 +399,7 @@ async function GetObjetoSocial(uuid, ocrDataText){
 
         jsonAnalisis["type"] = "ObjetoSocial";
 
-        console.info("GPT ANALYSIS RESPONSE");
+        console.info("GPT GetObjetoSocial RESPONSE", uuid);
 
         await actaConstitutivaData.UpdateEstatus(uuid, "ObjetoSocial");
         
@@ -416,7 +420,7 @@ async function GetObjetoSocialAnalisis(uuid, ocrDataText){
     let jsonAnalisis = {};
 
     try{
-        console.info("GPT ANALYSIS CALL");
+        console.info("GPT GetObjetoSocialAnalisis CALL", uuid);
 
         const prompt = `${gptObjAnalisis} ${ocrDataText}`;
 
@@ -424,7 +428,7 @@ async function GetObjetoSocialAnalisis(uuid, ocrDataText){
 
         jsonAnalisis["type"] = "ObjetoSocialAnalisis";
 
-        console.info("GPT ANALYSIS RESPONSE");
+        console.info("GPT GetObjetoSocialAnalisis RESPONSE", uuid);
 
         await actaConstitutivaData.UpdateEstatus(uuid, "ObjetoSocialAnalisis");
         
@@ -445,7 +449,7 @@ async function GetOrganosInternos(uuid, ocrDataText){
     let jsonAnalisis = {};
 
     try{
-        console.info("GPT ANALYSIS CALL");
+        console.info("GPT GetOrganosInternos CALL", uuid);
 
         const prompt = `${gptOrgInternosAnalisis} ${ocrDataText}`;
 
@@ -453,7 +457,7 @@ async function GetOrganosInternos(uuid, ocrDataText){
 
         jsonAnalisis["type"] = "OgranosInternos";
 
-        console.info("GPT ANALYSIS RESPONSE");
+        console.info("GPT GetOrganosInternos RESPONSE", uuid);
 
         await actaConstitutivaData.UpdateEstatus(uuid, "OgranosInternos");
         
@@ -527,7 +531,7 @@ async function GetFacultadesRepresentante(uuid, ocrDataText){
 
 }
 
-async function GetDocumentInfo(uuid, gralInfoStr){
+async function GetDocumentInfo(uuid, gralInfoStr, step){
 
     let allDocumentData = [];
 
@@ -536,7 +540,9 @@ async function GetDocumentInfo(uuid, gralInfoStr){
         let allDocumentInfo = [];
 
         allDocumentInfo.push(GetAnalisInfo(uuid, gralInfoStr));
-        // allDocumentInfo.push(GetObjetoSocial(uuid, gralInfoStr));
+        
+        if(step !== null && step > 1)
+            allDocumentInfo.push(GetObjetoSocial(uuid, gralInfoStr));
         // allDocumentInfo.push(GetObjetoSocialAnalisis(uuid, gralInfoStr));
         // allDocumentInfo.push(GetOrganosInternos(uuid, gralInfoStr));
         // allDocumentInfo.push(GetFacultadesConsejo(uuid, gralInfoStr));
@@ -547,6 +553,38 @@ async function GetDocumentInfo(uuid, gralInfoStr){
     }
     catch(error){
         console.error("ERROR GetDocumentInfo");
+        console.error(JSON.stringify(error));
+
+        throw error;
+    }
+    finally{
+        console.info("Termina GPT_Info");
+                // await actaConstitutivaData.UpdateEstatus(uuid, "GPT_Info");
+    }
+
+    return allDocumentData;
+}
+
+async function GetDocumentInfoSteps34(uuid, gralInfoStr, step, objSocialText){
+
+    let allDocumentData = [];
+
+    try{
+
+        let allDocumentInfo = [];
+        
+        if(step !== null && step > 2)
+            allDocumentInfo.push(GetObjetoSocialAnalisis(uuid, gralInfoStr));
+
+        if(step !== null && step > 3)
+            allDocumentInfo.push(GetOrganosInternos(uuid, objSocialText));
+
+
+        allDocumentData = Promise.all(allDocumentInfo);
+
+    }
+    catch(error){
+        console.error("ERROR GetDocumentInfoSteps34");
         console.error(JSON.stringify(error));
 
         throw error;
