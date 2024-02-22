@@ -6,8 +6,8 @@ const sql = require("mssql"),
         server: process.env.DB_HOST,
         database: process.env.DB_NAME,
         options: { trustServerCertificate: true},
-        connectionTimeout: 16000,
-        requestTimeout:dbTimeout
+        connectionTimeout: dbTimeout,
+        requestTimeout: dbTimeout
   };
 
 module.exports = {

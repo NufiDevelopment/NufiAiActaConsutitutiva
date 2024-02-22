@@ -51,7 +51,7 @@ async function GuardaActaConstitutiva(req){
         const step = (typeof data.paso === "undefined" || data.paso === null || data.paso === "") ? null: data.paso;
         const request_time = moment();
 
-        let idActa = await actaConstitutivaData.saveRequestActaConstitutiva(
+        let idActa =  await actaConstitutivaData.saveRequestActaConstitutiva(
             JSON.stringify(data), 
             uuid, 
             urlWebhook, 
@@ -174,7 +174,7 @@ async function InitProcessing(uuid, fileBase64, isWebhook, step){
         else{
 
             await actaConstitutivaData.UpdateEstatus(uuid, "SyncProcess");
-            response = await ProcessSync(uuid, estatus, step);
+            response = await ProcessSync(uuid, step);
         }
 
         return response;
@@ -455,11 +455,11 @@ async function GetOrganosInternos(uuid, ocrDataText){
 
         jsonAnalisis = await openAiData.Chat(uuid, prompt, "Analisis_Organos_Internos");
 
-        jsonAnalisis["type"] = "OgranosInternos";
+        jsonAnalisis["type"] = "OrganosInternos";
 
         console.info("GPT GetOrganosInternos RESPONSE", uuid);
 
-        await actaConstitutivaData.UpdateEstatus(uuid, "OgranosInternos");
+        await actaConstitutivaData.UpdateEstatus(uuid, "OrganosInternos");
         
     }
     catch(error){
@@ -577,7 +577,7 @@ async function GetDocumentInfoSteps34(uuid, gralInfoStr, step, objSocialText){
             allDocumentInfo.push(GetObjetoSocialAnalisis(uuid, gralInfoStr));
 
         if(step !== null && step > 3)
-            allDocumentInfo.push(GetOrganosInternos(uuid, objSocialText));
+            allDocumentInfo.push(GetOrganosInternos(uuid, gralInfoStr));
 
 
         allDocumentData = Promise.all(allDocumentInfo);
