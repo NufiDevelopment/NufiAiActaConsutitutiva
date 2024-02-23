@@ -282,11 +282,15 @@ async function ProcessActaConstitutiva(uuid, step){
             delete item.totalTokens;
 
             response.data[item.type] =  item;
+
+            delete response.data[item.type].type;
         });
 
+        const hasObjSocial = (Object.hasOwn(response.data, "ObjetoSocial") && Object.hasOwn(response.data.ObjetoSocial, "objeto_social"));
 
-        if(step != null && step > 2){         
-            objSocialData =  await GetDocumentInfoSteps34(uuid, pagesData.join("\n"), step, response.data["ObjetoSocial"]);
+
+        if(step != null && step > 2){
+            objSocialData =  await GetDocumentInfoSteps34(uuid, pagesData.join("\n"), step, response.data.ObjetoSocial.objeto_social, hasObjSocial);
 
             objSocialData.forEach(async (item, index)=>{
 
@@ -299,9 +303,15 @@ async function ProcessActaConstitutiva(uuid, step){
                 delete item.totalTokens;
     
                 response.data[item.type] =  item;
-            });
+
+                delete response.data[item.type].type;
+            });            
         }
 
+
+        response.data["totalTokensCompletion"] = totalTokensCompletion
+        response.data["totalTokensPrompt"] = totalTokensPrompt
+        response.data["totalTokens"] = totalTokens;
         response.data["uuid"] = uuid;                
 
         await actaConstitutivaData.UpdateTokensDoc(uuid, `GPT_QUERIES_COMPLETED`, totalTokensCompletion, totalTokensPrompt, totalTokens);
@@ -565,7 +575,7 @@ async function GetDocumentInfo(uuid, gralInfoStr, step){
     return allDocumentData;
 }
 
-async function GetDocumentInfoSteps34(uuid, gralInfoStr, step, objSocialText){
+async function GetDocumentInfoSteps34(uuid, gralInfoStr, step, objSocialText, hasObjSocial){
 
     let allDocumentData = [];
 
@@ -573,8 +583,8 @@ async function GetDocumentInfoSteps34(uuid, gralInfoStr, step, objSocialText){
 
         let allDocumentInfo = [];
         
-        if(step !== null && step > 2)
-            allDocumentInfo.push(GetObjetoSocialAnalisis(uuid, gralInfoStr));
+        if(step !== null && step > 2 && hasObjSocial)
+            allDocumentInfo.push(GetObjetoSocialAnalisis(uuid, objSocialText));
 
         if(step !== null && step > 3)
             allDocumentInfo.push(GetOrganosInternos(uuid, gralInfoStr));
@@ -789,13 +799,22 @@ function ValidateRequest(data){
         if (typeof data.fileB64 === "undefined" || data.fileB64 === null || data.fileB64 === "")
             result = "Campo fileB64 requerido";
         
-
+        if(result === true && typeof data.fileB64 !== "undefined" && data.fileB64 !== null && data.fileB64 !== ""){
             try{
                 const onlyB64 = GetBase64(data.fileB64);
             }
             catch(errorB64){
                 result = "Error al decodificar base64";
             }
+        }
+
+        if(result === true && Object.hasOwn(data, "paso")){
+            if(!Number.isInteger(data.paso)){
+                result = "Error campo paso debe ser Int";
+            }
+            else if(data.paso <1 || data.paso > 4 )
+                result = "Error campo paso debe ser Int con valor enre 1 y 4";
+        }            
 
         return result;
     }
