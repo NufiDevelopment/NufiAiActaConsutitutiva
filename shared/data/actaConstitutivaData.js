@@ -2,13 +2,14 @@ const moment   = require("moment"),
 DB       = require("../utils/DB");
 
 module.exports = {
-    saveRequestActaConstitutiva: async function(body, uuid, urlWebhook, type, reqTime){
-        return DB.insert({
+    saveRequestActaConstitutiva: async function(body, uuid, urlWebhook, type, step, reqTime){
+        return DB.insertSec({
             UUID: uuid,
             urlWebhook: urlWebhook,
             request: body, 
             requestDate: reqTime.format("YYYY-MM-DD HH:mm:ss"),
             type: type,
+            step: step,
             status: `Created`
         }, DB.tabla.actaConstitutiva)    
         .then(id => { 
@@ -35,7 +36,7 @@ module.exports = {
             status: status,
             error: error,
             errorWebhook : errorWebhook
-        }, DB.tabla.actaConstitutiva, `uuid='${uuid}'`, {uuid:uuid})        
+        }, DB.tabla.actaConstitutiva, `uuid=@uuid`, {uuid:uuid})        
         .catch(err => { 
 
             const error = {func: "saveResponseActaConstitutiva", uuid: uuid, err: err};            
@@ -49,10 +50,10 @@ module.exports = {
 
         console.log(`Actualiza status ${uuid} . ${status}`);
     
-        return DB.update({
+        return DB.updateSec({
             modified:response_time.format("YYYY-MM-DD HH:mm:ss"), 
             status: status, 
-        }, DB.tabla.actaConstitutiva, `uuid='${uuid}'`)
+        }, DB.tabla.actaConstitutiva, `uuid=@uuid`, {uuid:uuid})
         .catch(err => { 
             const error = {func: "UpdateEstatus", uuid: uuid, err: err};            
             console.error(error, uuid);
@@ -66,7 +67,7 @@ module.exports = {
         let sqlParams = [];
         sqlParams.push(DB.getParams("uuid", uuid));
 
-        let record = await DB.querySec(`SELECT urlWebhook, status, intentos, ocrText, requestDate FROM ${DB.tabla.actaConstitutiva} WHERE uuid = @uuid`,  sqlParams);
+        let record = await DB.querySec(`SELECT urlWebhook, status, intentos, ocrText, requestDate, step FROM ${DB.tabla.actaConstitutiva} WHERE uuid = @uuid`,  sqlParams);
 
         if(record.length == 0) 
             throw("Error al obtener registro");
@@ -131,11 +132,11 @@ module.exports = {
 
         console.log(`Actualiza OCR ${uuid} . OCR`);
     
-        return DB.update({
+        return DB.updateSec({
             modified:response_time.format("YYYY-MM-DD HH:mm:ss"), 
             ocrText: ocrText, 
             status: "OCR", 
-        }, DB.tabla.actaConstitutiva, `uuid='${uuid}'`)
+        }, DB.tabla.actaConstitutiva, `uuid=@uuid`, {uuid:uuid})
         .catch(err => { 
         
             const error = {func: "UpdateOcr", uuid: uuid, err: err};            
@@ -149,13 +150,13 @@ module.exports = {
 
         console.log(`Actualiza ${uuid} Tokens`);
     
-        return DB.update({
+        return DB.updateSec({
             modified:response_time.format("YYYY-MM-DD HH:mm:ss"), 
             promptTokens: tokensPrompt, 
             completionTokens: tokensCompletion, 
             totalTokens: tokensTotal, 
             status: status, 
-        }, DB.tabla.actaConstitutiva, `uuid='${uuid}'`)
+        }, DB.tabla.actaConstitutiva, `uuid=@uuid`, {uuid:uuid})
         .catch(err => { 
 
             const error = {func: "UpdateTokensDoc", uuid: uuid, err: err};            
@@ -166,7 +167,7 @@ module.exports = {
     },
     CreateTokensRecord: async function(uuid, typeDoc, docUuid, apikey, status,  requestDate){        
             
-        return DB.insert({
+        return DB.insertSec({
             uuid: uuid,
             TIpoDoc: typeDoc,
             Doc_UUID: docUuid,
@@ -191,14 +192,14 @@ module.exports = {
 
         console.log(`Actualiza ${docUuid} Token Record`);
     
-        return DB.update({
+        return DB.updateSec({
             modified: curtime.format("YYYY-MM-DD HH:mm:ss"), 
             promptTokens: promptTokens, 
             completionTokens: completionTokens, 
             totalTokens: totalTokens, 
             status: status, 
             responseDate: responseDate.format("YYYY-MM-DD HH:mm:ss")
-        }, DB.tabla.tokens, `doc_Uuid='${docUuid}'`)
+        }, DB.tabla.tokens, `doc_Uuid=@docUuid`, {docUuid:docUuid})
         .catch(err => { 
             const error = {func: "UpdateTokensRecord", uuid: docUuid, err: err};            
             console.error(error, uuid);

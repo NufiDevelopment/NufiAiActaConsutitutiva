@@ -47,14 +47,16 @@ async function GuardaActaConstitutiva(req){
       
   
         const urlWebhook = data.webhook;
-        const isWebhook = (urlWebhook) ? true: false;        
+        const isWebhook = (urlWebhook) ? true: false;
+        const step = (typeof data.paso === "undefined" || data.paso === null || data.paso === "") ? null: data.paso;
         const request_time = moment();
 
-        let idActa = await actaConstitutivaData.saveRequestActaConstitutiva(
+        let idActa =  await actaConstitutivaData.saveRequestActaConstitutiva(
             JSON.stringify(data), 
             uuid, 
             urlWebhook, 
             (isWebhook) ? "webhook" : "sincrono", 
+            step,
             request_time
         );        
 
@@ -72,8 +74,7 @@ async function GuardaActaConstitutiva(req){
 
                 fileBase64 = GetBase64(data.fileB64);
 
-
-                response = await InitProcessing(uuid, fileBase64, isWebhook);
+                response = await InitProcessing(uuid, fileBase64, isWebhook, step);
                 await actaConstitutivaData.saveResponseActaConstitutiva(uuid, JSON.stringify(response), "Finished");
 
                 tokens = await actaConstitutivaData.GetOpenAiTokens(uuid);
@@ -85,7 +86,7 @@ async function GuardaActaConstitutiva(req){
 
                 fileBase64 = GetBase64(data.fileB64);
                 
-                response = await InitProcessing(uuid, fileBase64, isWebhook);
+                response = await InitProcessing(uuid, fileBase64, isWebhook, step);
             }
             else{
 
@@ -140,7 +141,7 @@ async function ProcessWebhookQueue(item){
         const uuid = item.uuid;
         const actaConstitutiva = await actaConstitutivaData.GetRecord(uuid);
 
-        const resultWH = await ProcessWebhhoksAsync(uuid, actaConstitutiva.urlWebhook, actaConstitutiva.status);
+        const resultWH = await ProcessWebhhoksAsync(uuid, actaConstitutiva.urlWebhook, actaConstitutiva.step);
 
         console.info("Termina ejecución Queue "+ uuid);
 
@@ -150,7 +151,7 @@ async function ProcessWebhookQueue(item){
     }
 }
 
-async function InitProcessing(uuid, fileBase64, isWebhook){
+async function InitProcessing(uuid, fileBase64, isWebhook, step){
     try{        
         let response = {}, estatus = `Created`;
 
@@ -173,7 +174,7 @@ async function InitProcessing(uuid, fileBase64, isWebhook){
         else{
 
             await actaConstitutivaData.UpdateEstatus(uuid, "SyncProcess");
-            response = await ProcessSync(uuid, estatus);
+            response = await ProcessSync(uuid, step);
         }
 
         return response;
@@ -183,11 +184,11 @@ async function InitProcessing(uuid, fileBase64, isWebhook){
     }
 }
 
-async function ProcessSync(uuid){
+async function ProcessSync(uuid, step){
 
     try{
 
-        const response = await ProcessActaConstitutiva(uuid);
+        const response = await ProcessActaConstitutiva(uuid, step);
         return response;
     }
     catch(err){
@@ -195,7 +196,7 @@ async function ProcessSync(uuid){
     }
 }
 
-async function ProcessWebhhoksAsync(uuid, urlWebhook){
+async function ProcessWebhhoksAsync(uuid, urlWebhook, step){
 
     let error="", errorWebhook = "", estatus="", tokens = {};
     let response = { status: "error", message: "", data: {uuid: uuid}, code: 0 };
@@ -205,7 +206,7 @@ async function ProcessWebhhoksAsync(uuid, urlWebhook){
         try{
 
             try{
-                response = await ProcessActaConstitutiva(uuid);
+                response = await ProcessActaConstitutiva(uuid, step);
             }
             catch(errorProceso){
                 response = GetResponseError(errorProceso, uuid);
@@ -247,12 +248,13 @@ async function ProcessWebhhoksAsync(uuid, urlWebhook){
     }
 }
 
-async function ProcessActaConstitutiva(uuid){
+async function ProcessActaConstitutiva(uuid, step){
     try{
 
 
         let totalTokensCompletion = 0, totalTokensPrompt = 0, totalTokens = 0;
         let response = { status: "success", message: "", data: {uuid:uuid}, code: 200 };
+        let objSocialData = null;
 
         const fileName = `${uuid}.pdf`;
        
@@ -264,8 +266,10 @@ async function ProcessActaConstitutiva(uuid){
 
         await actaConstitutivaData.UpdateOcr(uuid, (pagesData.join("\n")));
 
-        const allInfoData = await GetDocumentInfo(uuid, pagesData.join("\n"));
+        await actaConstitutivaData.UpdateEstatus(uuid, "GetDocumentInfo");
 
+
+        const allInfoData = await GetDocumentInfo(uuid, pagesData.join("\n"), step);
 
         allInfoData.forEach(async (item, index)=>{
 
@@ -279,26 +283,36 @@ async function ProcessActaConstitutiva(uuid){
 
             response.data[item.type] =  item;
 
+            delete response.data[item.type].type;
         });
 
-        response.data["uuid"] = uuid;        
-        
-        // const jsonAnalisis = await GetAnalisInfo(uuid, pagesData.join("\n"));
-        // const jsonObjSocial = await GetObjetoSocial(uuid, pagesData.join("\n"));
-        // const jsonAnalisisObjSocial = await GetObjetoSocialAnalisis(uuid, pagesData.join("\n"));
-        // const jsonOrganosInternos = await GetOrganosInternos(uuid, pagesData.join("\n"));
-        // const jsonConsejo = await GetFacultadesConsejo(uuid, pagesData.join("\n"));
-        // const jsonRepresentante = await GetFacultadesRepresentante(uuid, pagesData.join("\n"));
+        const hasObjSocial = (Object.hasOwn(response.data, "ObjetoSocial") && Object.hasOwn(response.data.ObjetoSocial, "objeto_social"));
 
-        
-        // response.data["DatosGenerales"] =  jsonAnalisis;
-        // response.data["ObjetoSocial"] =  jsonObjSocial;
-        // response.data["AnalisisObjetoSocial"] =  jsonAnalisisObjSocial;
-        // response.data["OrganosInternos"] =  jsonOrganosInternos;
-        // response.data["FacultadesConsejoAdministracion"] =  jsonConsejo;
-        // response.data["FacultadesRepresentante"] =  jsonRepresentante;
 
-        response.data["uuid"] = uuid;        
+        if(step != null && step > 2){
+            objSocialData =  await GetDocumentInfoSteps34(uuid, pagesData.join("\n"), step, response.data.ObjetoSocial.objeto_social, hasObjSocial);
+
+            objSocialData.forEach(async (item, index)=>{
+
+                totalTokensCompletion += item.totalTokensCompletion;
+                totalTokensPrompt += item.totalTokensPrompt;
+                totalTokens += item.totalTokens;
+                
+                delete item.totalTokensCompletion;
+                delete item.totalTokensPrompt;
+                delete item.totalTokens;
+    
+                response.data[item.type] =  item;
+
+                delete response.data[item.type].type;
+            });            
+        }
+
+
+        response.data["totalTokensCompletion"] = totalTokensCompletion
+        response.data["totalTokensPrompt"] = totalTokensPrompt
+        response.data["totalTokens"] = totalTokens;
+        response.data["uuid"] = uuid;                
 
         await actaConstitutivaData.UpdateTokensDoc(uuid, `GPT_QUERIES_COMPLETED`, totalTokensCompletion, totalTokensPrompt, totalTokens);
 
@@ -358,7 +372,7 @@ async function GetAnalisInfo(uuid, ocrDataText){
     let jsonAnalisis = {};
 
     try{
-        console.info("GPT ANALYSIS CALL");
+        console.info("GPT GetAnalisInfo CALL", uuid);
 
         const prompt = `${gptDatosGenerales} ${ocrDataText}`;
 
@@ -366,7 +380,7 @@ async function GetAnalisInfo(uuid, ocrDataText){
 
         jsonAnalisis["type"] = "AnalisisGeneral";
 
-        console.info("GPT ANALYSIS RESPONSE");
+        console.info("GPT GetAnalisInfo RESPONSE", uuid);
 
         await actaConstitutivaData.UpdateEstatus(uuid, "AnalisisGeneral");
         
@@ -387,7 +401,7 @@ async function GetObjetoSocial(uuid, ocrDataText){
     let jsonAnalisis = {};
 
     try{
-        console.info("GPT ANALYSIS CALL");
+        console.info("GPT GetObjetoSocial CALL", uuid);
 
         const prompt = `${gptObjSocial} ${ocrDataText}`;
 
@@ -395,7 +409,7 @@ async function GetObjetoSocial(uuid, ocrDataText){
 
         jsonAnalisis["type"] = "ObjetoSocial";
 
-        console.info("GPT ANALYSIS RESPONSE");
+        console.info("GPT GetObjetoSocial RESPONSE", uuid);
 
         await actaConstitutivaData.UpdateEstatus(uuid, "ObjetoSocial");
         
@@ -416,7 +430,7 @@ async function GetObjetoSocialAnalisis(uuid, ocrDataText){
     let jsonAnalisis = {};
 
     try{
-        console.info("GPT ANALYSIS CALL");
+        console.info("GPT GetObjetoSocialAnalisis CALL", uuid);
 
         const prompt = `${gptObjAnalisis} ${ocrDataText}`;
 
@@ -424,7 +438,7 @@ async function GetObjetoSocialAnalisis(uuid, ocrDataText){
 
         jsonAnalisis["type"] = "ObjetoSocialAnalisis";
 
-        console.info("GPT ANALYSIS RESPONSE");
+        console.info("GPT GetObjetoSocialAnalisis RESPONSE", uuid);
 
         await actaConstitutivaData.UpdateEstatus(uuid, "ObjetoSocialAnalisis");
         
@@ -445,17 +459,17 @@ async function GetOrganosInternos(uuid, ocrDataText){
     let jsonAnalisis = {};
 
     try{
-        console.info("GPT ANALYSIS CALL");
+        console.info("GPT GetOrganosInternos CALL", uuid);
 
         const prompt = `${gptOrgInternosAnalisis} ${ocrDataText}`;
 
         jsonAnalisis = await openAiData.Chat(uuid, prompt, "Analisis_Organos_Internos");
 
-        jsonAnalisis["type"] = "OgranosInternos";
+        jsonAnalisis["type"] = "OrganosInternos";
 
-        console.info("GPT ANALYSIS RESPONSE");
+        console.info("GPT GetOrganosInternos RESPONSE", uuid);
 
-        await actaConstitutivaData.UpdateEstatus(uuid, "OgranosInternos");
+        await actaConstitutivaData.UpdateEstatus(uuid, "OrganosInternos");
         
     }
     catch(error){
@@ -527,7 +541,7 @@ async function GetFacultadesRepresentante(uuid, ocrDataText){
 
 }
 
-async function GetDocumentInfo(uuid, gralInfoStr){
+async function GetDocumentInfo(uuid, gralInfoStr, step){
 
     let allDocumentData = [];
 
@@ -536,7 +550,9 @@ async function GetDocumentInfo(uuid, gralInfoStr){
         let allDocumentInfo = [];
 
         allDocumentInfo.push(GetAnalisInfo(uuid, gralInfoStr));
-        // allDocumentInfo.push(GetObjetoSocial(uuid, gralInfoStr));
+        
+        if(step !== null && step > 1)
+            allDocumentInfo.push(GetObjetoSocial(uuid, gralInfoStr));
         // allDocumentInfo.push(GetObjetoSocialAnalisis(uuid, gralInfoStr));
         // allDocumentInfo.push(GetOrganosInternos(uuid, gralInfoStr));
         // allDocumentInfo.push(GetFacultadesConsejo(uuid, gralInfoStr));
@@ -547,6 +563,38 @@ async function GetDocumentInfo(uuid, gralInfoStr){
     }
     catch(error){
         console.error("ERROR GetDocumentInfo");
+        console.error(JSON.stringify(error));
+
+        throw error;
+    }
+    finally{
+        console.info("Termina GPT_Info");
+                // await actaConstitutivaData.UpdateEstatus(uuid, "GPT_Info");
+    }
+
+    return allDocumentData;
+}
+
+async function GetDocumentInfoSteps34(uuid, gralInfoStr, step, objSocialText, hasObjSocial){
+
+    let allDocumentData = [];
+
+    try{
+
+        let allDocumentInfo = [];
+        
+        if(step !== null && step > 2 && hasObjSocial)
+            allDocumentInfo.push(GetObjetoSocialAnalisis(uuid, objSocialText));
+
+        if(step !== null && step > 3)
+            allDocumentInfo.push(GetOrganosInternos(uuid, gralInfoStr));
+
+
+        allDocumentData = Promise.all(allDocumentInfo);
+
+    }
+    catch(error){
+        console.error("ERROR GetDocumentInfoSteps34");
         console.error(JSON.stringify(error));
 
         throw error;
@@ -751,13 +799,22 @@ function ValidateRequest(data){
         if (typeof data.fileB64 === "undefined" || data.fileB64 === null || data.fileB64 === "")
             result = "Campo fileB64 requerido";
         
-
+        if(result === true && typeof data.fileB64 !== "undefined" && data.fileB64 !== null && data.fileB64 !== ""){
             try{
                 const onlyB64 = GetBase64(data.fileB64);
             }
             catch(errorB64){
                 result = "Error al decodificar base64";
             }
+        }
+
+        if(result === true && Object.hasOwn(data, "paso")){
+            if(!Number.isInteger(data.paso)){
+                result = "Error campo paso debe ser Int";
+            }
+            else if(data.paso <1 || data.paso > 4 )
+                result = "Error campo paso debe ser Int con valor enre 1 y 4";
+        }            
 
         return result;
     }
