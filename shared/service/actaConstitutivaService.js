@@ -798,6 +798,8 @@ function ValidateRequest(data){
 
         if (typeof data.fileB64 === "undefined" || data.fileB64 === null || data.fileB64 === "")
             result = "Campo fileB64 requerido";
+        else if(typeof data.webhook === "undefined" || data.webhook === null || data.webhook === "")
+            result = "Campo webhook requerido";
         
         if(result === true && typeof data.fileB64 !== "undefined" && data.fileB64 !== null && data.fileB64 !== ""){
             try{
