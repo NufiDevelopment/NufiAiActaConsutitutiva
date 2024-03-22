@@ -33,16 +33,17 @@ async function Chat(uuidDoc, prompt, tipoQuery){
 
         chat = await client.chat.completions.create(chatConfig);        
 
+        if(Object.hasOwn(chat, "usage")){
+            total_tokens = chat.usage.total_tokens;
+            completion_tokens = chat.usage.completion_tokens;
+            prompt_tokens = chat.usage.prompt_tokens;
+        }
+
         jsonString = chat.choices[0].message.content; 
         
         jsonData = (jsonString !== null) ? JSON.parse(jsonString): null; 
 
         if(jsonData !== null){
-
-            total_tokens = chat.usage.total_tokens;
-            completion_tokens = chat.usage.completion_tokens;
-            prompt_tokens = chat.usage.prompt_tokens;
-
 
             jsonData["totalTokens"] = total_tokens;
             jsonData["totalTokensCompletion"] = completion_tokens;
