@@ -34,6 +34,8 @@ async function GetOcrPDF(urlPublic){
                 ocrDataText = ocrData.recognizedText;    
 
                 ocrDataTextArray = ocrDataText.split("==== ").filter(v=> v !== "");
+
+                break;
             }
             catch(err){                
                 console.log("OCR ERROR intento "+(i + 1));
@@ -57,7 +59,7 @@ async function GetOcrPDF(urlPublic){
 }
 async function GetOcrImage(urlPublic){
     
-        let ocrData = null;
+        let ocrData = null, ocrDataText = "";;
         try{    
             const bodyReq = {imageUrl: urlPublic};
             const headersReq = {auth: OCR_API_KEY};
@@ -69,6 +71,9 @@ async function GetOcrImage(urlPublic){
             
                     console.info("CALLS OCR IMG");
                     ocrData =  await utils.POST(OCR_IMG_URL, bodyReq, headersReq);   
+
+                    ocrData = ocrData.recognizedTexts;
+                    break;    
                 }
                 catch(err){                
                     console.log("OCR ERROR intento "+(i + 1));
