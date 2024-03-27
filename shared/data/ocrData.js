@@ -1,4 +1,6 @@
-const utils  = require("../utils/utilities");
+const utils  = require("../utils/utilities"),
+moment = require("moment"), 
+{ v4: uuidv4 } = require('uuid');
 
 const OCR_PDF_URL = process.env.OCR_PDF_URL;
 const OCR_IMG_URL = process.env.OCR_IMG_URL;
