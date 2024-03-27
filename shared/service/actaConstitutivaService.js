@@ -270,7 +270,7 @@ async function ProcessActaConstitutiva(uuid, step){
 
         console.info("GETS URL");
 
-        const pagesData = await ocr.GetOcrPDF(publicUrl);
+        const pagesData = await ocr.GetOcrPDF(publicUrl, uuid);
 
         await actaConstitutivaData.UpdateOcr(uuid, (pagesData.join("\n")));
 
