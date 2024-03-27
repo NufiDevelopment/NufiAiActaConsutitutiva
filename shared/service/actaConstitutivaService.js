@@ -198,8 +198,8 @@ async function ProcessSync(uuid, step){
 
 async function ProcessWebhhoksAsync(uuid, urlWebhook, step){
 
-    let error="", errorWebhook = "", estatus="", tokens = {};
-    let response = { status: "error", message: "", data: {uuid: uuid}, code: 0 };
+    let error="", errorWebhook = "", estatus="", tokens = {}, respWebhook = "";
+    let response = { status: "error", message: "", data: {uuid: uuid}, code: 0 }, uuidLog = uuidv4();
 
     try{
          
@@ -214,10 +214,18 @@ async function ProcessWebhhoksAsync(uuid, urlWebhook, step){
             }
         
             try{
-                const resp = await utils.POST(urlWebhook, response, null);
+                let idLogRequest = await actaConstitutivaData.SaveRequestWebhook(uuidLog, uuid, JSON.stringify(response), "webhookResponse", urlWebhook);
+                
+                respWebhook = await utils.POST(urlWebhook, response, null, 5000);
+
+                await actaConstitutivaData.SaveResponseWebhook(uuidLog, JSON.stringify(respWebhook), "success", "");
+
+
             }
             catch(errorWH){
                 errorWebhook = errorWH;
+
+                await actaConstitutivaData.SaveResponseWebhook(uuidLog, JSON.stringify(respWebhook), "error", JSON.stringify(errorWH));
             }
 
             tokens = await actaConstitutivaData.GetOpenAiTokens(uuid);
