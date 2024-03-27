@@ -206,5 +206,51 @@ module.exports = {
 
             return console.log(err, docUuid)
         });
+    },
+    SaveRequestWebhook: async function (uuid, Doc_UUID, request,  typeQuery, url = ""){
+
+        let reqTime = moment();       
+    
+        return DB.insertSec({
+            uuid: uuid, 
+            Doc_UUID: Doc_UUID, 
+            tipoQuery: typeQuery, 
+            url: url, 
+            request: request,
+            requestDate: reqTime.format("YYYY-MM-DD HH:mm:ss"),        
+            status: `Created`,
+            promptTokens: "0",             
+            completionTokens: "0",
+            totalTokens: "0",
+        }, DB.tabla.actaConstitutivaQueries)
+        .then(id => { return ( id);})
+        .catch(err => { 
+    
+            const fullError = {func: "SaveRequestWebhook", stack:err, uuid: Doc_UUID};
+            console.error(fullError, Doc_UUID);
+    
+            return console.log(err, uuid)
+        });
+    },    
+    SaveResponseWebhook: async function  (uuid, response, status, error){
+    
+        let resTime = moment(); 
+    
+        return DB.updateSec({
+            response: response,
+            responseDate: resTime.format("YYYY-MM-DD HH:mm:ss"),
+            messageResponse: "",
+            jsonResponse: "",
+            error: error,
+            status: status
+        }, DB.tabla.actaConstitutivaQueries, `uuid=@uuid`, {uuid:uuid})
+        .catch(err => {
+    
+            const fullError = {func: "SaveResponseWebhook", stack:err, QueryUuid: uuid};
+            console.error(fullError, uuid);
+            
+            return console.log(err, uuid)
+        
+        });
     }
 }
