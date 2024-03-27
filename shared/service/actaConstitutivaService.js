@@ -216,7 +216,7 @@ async function ProcessWebhhoksAsync(uuid, urlWebhook, step){
             try{
                 let idLogRequest = await actaConstitutivaData.SaveRequestWebhook(uuidLog, uuid, JSON.stringify(response), "webhookResponse", urlWebhook);
                 
-                respWebhook = await utils.POST(urlWebhook, response, null);
+                respWebhook = await utils.POST(urlWebhook, response, null, 5000);
 
                 await actaConstitutivaData.SaveResponseWebhook(uuidLog, JSON.stringify(respWebhook), "success", "");
 
