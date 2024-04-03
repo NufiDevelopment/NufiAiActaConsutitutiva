@@ -6,6 +6,8 @@ const OCR_PDF_URL = process.env.OCR_PDF_URL;
 const OCR_IMG_URL = process.env.OCR_IMG_URL;
 const OCR_API_KEY = process.env.OCR_API_KEY;
 const maxIntentosOcr =  parseInt(process.env.MAX_INTENTOS_OCR);
+const delay  =  parseInt(process.env.TIME_REINTENTO_OCR_SECS) * 1000;
+const timeoutPost  =  parseInt(process.env.TIME_OUT_POST_SECS) * 1000;
 
 
 module.exports = {
@@ -36,7 +38,7 @@ async function GetOcrPDF(urlPublic, uuid){
                 idLog = await SaveRequestOcr(uuidLog, uuid, JSON.stringify(bodyReq), "OcrPDF", OCR_PDF_URL);
             
                 console.info("CALLS OCR PDF");
-                ocrData =  await utils.POST(OCR_PDF_URL, bodyReq, headersReq);
+                ocrData =  await utils.POST(OCR_PDF_URL, bodyReq, headersReq, timeoutPost, delay);
                 ocrDataText = ocrData.recognizedText;    
 
                 ocrDataTextArray = ocrDataText.split("==== ").filter(v=> v !== "");
@@ -83,7 +85,7 @@ async function GetOcrImage(urlPublic, uuid){
                     idLog = await SaveRequestOcr(uuidLog, uuid, JSON.stringify(bodyReq), "OcrIMG", OCR_IMG_URL);
             
                     console.info("CALLS OCR IMG");
-                    ocrData =  await utils.POST(OCR_IMG_URL, bodyReq, headersReq);   
+                    ocrData =  await utils.POST(OCR_IMG_URL, bodyReq, headersReq, timeoutPost, delay);
 
                     ocrData = ocrData.recognizedTexts;
 
