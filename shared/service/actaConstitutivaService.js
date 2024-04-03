@@ -22,6 +22,7 @@ const gptFacultadesRepresentante = process.env.CHAT_MSG_FACULTADES_REPRESENTANTE
 
 
 const statusWebhook = process.env.STATUS_WEBHOOK;
+const timeoutWH =  parseInt(process.env.TIME_OUT_POST_WH) * 1000;
  
 
 module.exports = {
@@ -216,7 +217,7 @@ async function ProcessWebhhoksAsync(uuid, urlWebhook, step){
             try{
                 let idLogRequest = await actaConstitutivaData.SaveRequestWebhook(uuidLog, uuid, JSON.stringify(response), "webhookResponse", urlWebhook);
                 
-                respWebhook = await utils.POST(urlWebhook, response, null, 5000);
+                respWebhook = await utils.POST(urlWebhook, response, null, timeoutWH);
 
                 await actaConstitutivaData.SaveResponseWebhook(uuidLog, JSON.stringify(respWebhook), "success", "");
 
